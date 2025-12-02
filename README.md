@@ -148,9 +148,9 @@ LLMTextVisualizer/
 
 ## Limitations
 
-- OpenRouter free tier may have rate limits during peak times
-- Embedding files are large (~300 MB total) - requires Git LFS for version control
+- Embedding files are large (~400 MB total for both review and summary embeddings) - requires Git LFS for version control
 - BGE reranking runs on CPU by default (GPU would be faster)
+- Initial embedding generation takes 20-30 minutes for 141K reviews
 
 ## Future Improvements
 
@@ -197,10 +197,10 @@ This project demonstrates a **semantic search analytics platform** that transfor
 ### Technical Architecture Benefits
 
 **Cost-Effective ML Pipeline**
-- Leverages free LLM API (OpenRouter) for query understanding
+- 100% local execution - no API keys or external services required
 - Local embedding models eliminate ongoing inference costs
 - Pre-computed embeddings enable sub-second search on 140K+ documents
-- BGE reranker provides LLM-quality relevance at 10x lower latency
+- BGE reranker provides high-quality relevance scoring at low latency
 
 **Scalable & Extensible**
 - Two-stage search (fast retrieval → precise reranking) scales to millions of reviews
@@ -208,9 +208,9 @@ This project demonstrates a **semantic search analytics platform** that transfor
 - Streamlit enables rapid prototyping and stakeholder demos
 
 **Privacy-First Design**
-- All embeddings and reranking run locally
-- Only query extraction uses external API (no sensitive review data sent)
-- Can be deployed on-premise for compliance-sensitive industries
+- All processing runs 100% locally on your machine
+- No data sent to external services
+- Perfect for sensitive data and on-premise deployments
 
 ### Potential Product Roadmap
 
@@ -265,5 +265,5 @@ MIT License
 Built with:
 - [Streamlit](https://streamlit.io/)
 - [Sentence Transformers](https://www.sbert.net/)
-- [OpenRouter](https://openrouter.ai/)
+- [BGE Reranker](https://huggingface.co/BAAI/bge-reranker-base)
 - [Plotly](https://plotly.com/)

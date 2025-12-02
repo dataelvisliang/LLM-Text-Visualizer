@@ -28,35 +28,60 @@ def generate_embeddings():
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
     # Generate embeddings in batches
-    print("Generating embeddings (this may take 10-15 minutes)...")
+    print("Generating embeddings for review text (this may take 10-15 minutes)...")
     batch_size = 1000
-    all_embeddings = []
+    all_review_embeddings = []
 
     for i in range(0, len(df), batch_size):
-        batch_texts = df['combined_text'].iloc[i:i+batch_size].tolist()
+        batch_texts = df['Text'].iloc[i:i+batch_size].tolist()
         batch_embeddings = model.encode(
             batch_texts,
             show_progress_bar=True,
             batch_size=32,
             normalize_embeddings=True  # Normalized for cosine similarity
         )
-        all_embeddings.append(batch_embeddings)
-        print(f"Processed {min(i+batch_size, len(df))}/{len(df)} reviews")
+        all_review_embeddings.append(batch_embeddings)
+        print(f"Processed {min(i+batch_size, len(df))}/{len(df)} review texts")
 
-    embeddings = np.vstack(all_embeddings)
+    review_embeddings = np.vstack(all_review_embeddings)
 
-    print(f"Embeddings shape: {embeddings.shape}")
-    print(f"Embeddings size: {embeddings.nbytes / (1024*1024):.2f} MB")
+    print(f"Review embeddings shape: {review_embeddings.shape}")
+    print(f"Review embeddings size: {review_embeddings.nbytes / (1024*1024):.2f} MB")
+
+    # Generate embeddings for summaries
+    print("\nGenerating embeddings for summaries...")
+    all_summary_embeddings = []
+
+    for i in range(0, len(df), batch_size):
+        batch_summaries = df['Summary'].iloc[i:i+batch_size].tolist()
+        batch_embeddings = model.encode(
+            batch_summaries,
+            show_progress_bar=True,
+            batch_size=32,
+            normalize_embeddings=True
+        )
+        all_summary_embeddings.append(batch_embeddings)
+        print(f"Processed {min(i+batch_size, len(df))}/{len(df)} summaries")
+
+    summary_embeddings = np.vstack(all_summary_embeddings)
+
+    print(f"Summary embeddings shape: {summary_embeddings.shape}")
+    print(f"Summary embeddings size: {summary_embeddings.nbytes / (1024*1024):.2f} MB")
 
     # Save embeddings and metadata
-    print("Saving embeddings...")
+    print("\nSaving embeddings...")
     output_dir = Path('dataset')
     output_dir.mkdir(exist_ok=True)
 
-    # Save as compressed numpy format
+    # Save both review and summary embeddings as compressed numpy format
     np.savez_compressed(
-        output_dir / 'embeddings.npz',
-        embeddings=embeddings.astype(np.float32)
+        output_dir / 'review_embeddings.npz',
+        embeddings=review_embeddings.astype(np.float32)
+    )
+
+    np.savez_compressed(
+        output_dir / 'summary_embeddings.npz',
+        embeddings=summary_embeddings.astype(np.float32)
     )
 
     # Save metadata (indices, dates, texts)
@@ -72,13 +97,15 @@ def generate_embeddings():
     with open(output_dir / 'metadata.pkl', 'wb') as f:
         pickle.dump(metadata, f, protocol=4)
 
-    compressed_size = (output_dir / 'embeddings.npz').stat().st_size / (1024*1024)
+    review_emb_size = (output_dir / 'review_embeddings.npz').stat().st_size / (1024*1024)
+    summary_emb_size = (output_dir / 'summary_embeddings.npz').stat().st_size / (1024*1024)
     metadata_size = (output_dir / 'metadata.pkl').stat().st_size / (1024*1024)
 
     print(f"\nDone!")
-    print(f"Embeddings saved to: {output_dir / 'embeddings.npz'} ({compressed_size:.2f} MB)")
+    print(f"Review embeddings saved to: {output_dir / 'review_embeddings.npz'} ({review_emb_size:.2f} MB)")
+    print(f"Summary embeddings saved to: {output_dir / 'summary_embeddings.npz'} ({summary_emb_size:.2f} MB)")
     print(f"Metadata saved to: {output_dir / 'metadata.pkl'} ({metadata_size:.2f} MB)")
-    print(f"Total size: {compressed_size + metadata_size:.2f} MB")
+    print(f"Total size: {review_emb_size + summary_emb_size + metadata_size:.2f} MB")
 
 if __name__ == "__main__":
     generate_embeddings()

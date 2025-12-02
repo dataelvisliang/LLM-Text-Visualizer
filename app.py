@@ -21,8 +21,10 @@ st.set_page_config(
 )
 
 # Initialize session state
-if 'embeddings' not in st.session_state:
-    st.session_state.embeddings = None
+if 'review_embeddings' not in st.session_state:
+    st.session_state.review_embeddings = None
+if 'summary_embeddings' not in st.session_state:
+    st.session_state.summary_embeddings = None
 if 'metadata' not in st.session_state:
     st.session_state.metadata = None
 if 'model' not in st.session_state:
@@ -47,22 +49,27 @@ def load_reranker_model():
 
 @st.cache_data
 def load_embeddings_and_metadata():
-    """Load pre-computed embeddings and metadata"""
-    embeddings_path = Path('dataset/embeddings.npz')
+    """Load pre-computed review and summary embeddings and metadata"""
+    review_embeddings_path = Path('dataset/review_embeddings.npz')
+    summary_embeddings_path = Path('dataset/summary_embeddings.npz')
     metadata_path = Path('dataset/metadata.pkl')
 
-    if not embeddings_path.exists() or not metadata_path.exists():
-        return None, None
+    if not review_embeddings_path.exists() or not summary_embeddings_path.exists() or not metadata_path.exists():
+        return None, None, None
 
-    # Load embeddings
-    embeddings_data = np.load(embeddings_path)
-    embeddings = embeddings_data['embeddings']
+    # Load review embeddings
+    review_embeddings_data = np.load(review_embeddings_path)
+    review_embeddings = review_embeddings_data['embeddings']
+
+    # Load summary embeddings
+    summary_embeddings_data = np.load(summary_embeddings_path)
+    summary_embeddings = summary_embeddings_data['embeddings']
 
     # Load metadata
     with open(metadata_path, 'rb') as f:
         metadata = pickle.load(f)
 
-    return embeddings, metadata
+    return review_embeddings, summary_embeddings, metadata
 
 
 def rerank_with_bge(query: str, texts: list, reranker: CrossEncoder) -> list:
@@ -239,18 +246,19 @@ with st.sidebar:
     """)
 
 # Load embeddings and metadata
-if st.session_state.embeddings is None:
+if st.session_state.review_embeddings is None:
     with st.spinner("Loading embeddings..."):
-        embeddings, metadata = load_embeddings_and_metadata()
+        review_embeddings, summary_embeddings, metadata = load_embeddings_and_metadata()
 
-        if embeddings is None:
+        if review_embeddings is None:
             st.error("⚠️ Embeddings not found! Please run `generate_embeddings.py` first.")
             st.code("python generate_embeddings.py", language="bash")
             st.stop()
 
-        st.session_state.embeddings = embeddings
+        st.session_state.review_embeddings = review_embeddings
+        st.session_state.summary_embeddings = summary_embeddings
         st.session_state.metadata = metadata
-        st.success(f"✅ Loaded {len(embeddings):,} review embeddings")
+        st.success(f"✅ Loaded {len(review_embeddings):,} review embeddings and {len(summary_embeddings):,} summary embeddings")
 
 # Load embedding model
 if st.session_state.model is None:
@@ -268,29 +276,44 @@ st.markdown("*Here are 6 random reviews from the dataset to give you ideas for w
 
 # Create a dataframe from metadata and sample 6 random rows
 if st.session_state.metadata is not None:
-    # Use seed for reproducible random selection until refresh is clicked
-    np.random.seed(st.session_state.preview_seed)
-    random_indices = np.random.choice(len(st.session_state.metadata['texts']), 6, replace=False)
-
-    preview_df = pd.DataFrame({
-        'Date': [st.session_state.metadata['dates'][idx] for idx in random_indices],
-        'Score': [st.session_state.metadata['scores'][idx] for idx in random_indices],
-        'Summary': [st.session_state.metadata['summaries'][idx] for idx in random_indices],
-        'Review': [st.session_state.metadata['texts'][idx][:200] + '...' if len(st.session_state.metadata['texts'][idx]) > 200 else st.session_state.metadata['texts'][idx] for idx in random_indices]
-    })
-
-    # Style the dataframe
-    st.dataframe(
-        preview_df,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
-            "Score": st.column_config.NumberColumn("⭐ Score", format="%d/5"),
-            "Summary": st.column_config.TextColumn("Summary", width="medium"),
-            "Review": st.column_config.TextColumn("Review Text", width="large")
-        }
+    # Column selector
+    available_columns = ['Summary', 'Review', 'Date', 'Score']
+    selected_columns = st.multiselect(
+        "Select columns to display:",
+        options=available_columns,
+        default=['Summary', 'Review'],
+        help="Choose which columns to show in the preview table"
     )
+
+    if not selected_columns:
+        st.warning("Please select at least one column to display")
+    else:
+        # Use seed for reproducible random selection until refresh is clicked
+        np.random.seed(st.session_state.preview_seed)
+        random_indices = np.random.choice(len(st.session_state.metadata['texts']), 6, replace=False)
+
+        preview_df = pd.DataFrame({
+            'Summary': [st.session_state.metadata['summaries'][idx] for idx in random_indices],
+            'Review': [st.session_state.metadata['texts'][idx][:200] + '...' if len(st.session_state.metadata['texts'][idx]) > 200 else st.session_state.metadata['texts'][idx] for idx in random_indices],
+            'Date': [st.session_state.metadata['dates'][idx] for idx in random_indices],
+            'Score': [st.session_state.metadata['scores'][idx] for idx in random_indices]
+        })
+
+        # Filter to show only selected columns
+        preview_df = preview_df[selected_columns]
+
+        # Style the dataframe
+        st.dataframe(
+            preview_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Date": st.column_config.DateColumn("Date", format="YYYY-MM-DD", width="small"),
+                "Score": st.column_config.NumberColumn("⭐ Score", format="%d/5", width="small"),
+                "Summary": st.column_config.TextColumn("Summary", width="medium"),
+                "Review": st.column_config.TextColumn("Review Text", width="large")
+            }
+        )
 
     # Refresh button below the table, left-justified
     if st.button("⭮ Refresh", help="Load new random reviews", key="refresh_preview"):
@@ -306,6 +329,14 @@ search_query = st.text_input(
     "Search phrase",
     placeholder="no tea flavor",
     help="Enter keywords or phrases to search for in reviews"
+)
+
+# Search target selector
+search_target = st.radio(
+    "Search in:",
+    options=["Review Text", "Summary"],
+    horizontal=True,
+    help="Choose whether to search in full review text or just summaries"
 )
 
 st.markdown("##### Search Parameters")
@@ -376,7 +407,7 @@ if st.session_state.metadata is not None:
     st.markdown("##### Score Filter")
     score_threshold = st.slider(
         "Minimum Relevance Score",
-        min_value=0.60,
+        min_value=0.20,
         max_value=1.00,
         value=0.60,
         step=0.05,
@@ -387,6 +418,14 @@ if st.button("🔎 Search", type="primary", disabled=not search_query):
     if not search_query:
         st.warning("Please enter a search phrase")
     else:
+        # Select the appropriate embeddings based on search target
+        if search_target == "Summary":
+            selected_embeddings = st.session_state.summary_embeddings
+            search_field = "summaries"
+        else:  # Review Text
+            selected_embeddings = st.session_state.review_embeddings
+            search_field = "texts"
+
         # Step 1: Generate query embedding
         with st.spinner("Generating query embedding..."):
             query_embedding = st.session_state.model.encode(
@@ -394,11 +433,11 @@ if st.button("🔎 Search", type="primary", disabled=not search_query):
                 normalize_embeddings=True
             )[0]
 
-        # Step 3: Semantic search
-        with st.spinner(f"Searching through 141,210 reviews (retrieving top {top_k_retrieval})..."):
+        # Step 2: Semantic search
+        with st.spinner(f"Searching through 141,210 {search_target.lower()}s (retrieving top {top_k_retrieval})..."):
             top_indices, top_scores = semantic_search(
                 query_embedding,
-                st.session_state.embeddings,
+                selected_embeddings,
                 top_k=top_k_retrieval
             )
 
@@ -410,10 +449,10 @@ if st.button("🔎 Search", type="primary", disabled=not search_query):
 
         st.info(f"🎯 Reranking top {len(rerank_indices)} candidates with BGE cross-encoder...")
 
-        # Step 5: Rerank with BGE reranker
+        # Step 5: Rerank with BGE reranker using the selected search field
         with st.spinner(f"Reranking {len(rerank_indices)} results with BGE cross-encoder..."):
             candidate_texts = [
-                st.session_state.metadata['combined_texts'][idx]
+                st.session_state.metadata[search_field][idx]
                 for idx in rerank_indices
             ]
 

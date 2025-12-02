@@ -27,15 +27,7 @@ Embeddings saved to: dataset/embeddings.npz (XX MB)
 Metadata saved to: dataset/metadata.pkl (XX MB)
 ```
 
-## 2. Get OpenRouter API Key
-
-1. Visit https://openrouter.ai/
-2. Sign up (free)
-3. Go to "API Keys" section
-4. Click "Create Key"
-5. Copy your key (starts with `sk-or-v1-...`)
-
-## 3. Run the App
+## 2. Run the App
 
 ```bash
 streamlit run app.py
@@ -43,46 +35,46 @@ streamlit run app.py
 
 The app will open at http://localhost:8501
 
-## 4. Use the App
+## 3. Use the App
 
-1. **Paste API Key** in the sidebar (password field)
-2. **Type a question** like: "How many people complain about no tea flavor?"
-3. **Select time granularity**: day, month, or year
-4. **Choose chart type**: Trend or Score Distribution
-5. **Click Search** 🔎
+1. **Enter search phrase** like: "no tea flavor" or "fast shipping"
+2. **Choose search target**: Review Text or Summary
+3. **Adjust search parameters**: Top-K for retrieval and reranking
+4. **Set date range** (optional): Filter reviews by time period
+5. **Set score threshold**: Minimum relevance score (0.20-1.00)
+6. **Select visualization**: Time granularity (month/year) and chart type
+7. **Click Search** 🔎
 
-## Example Questions to Try
+## Example Search Phrases to Try
 
 ```
-How many people complain about no tea flavor?
-Find reviews mentioning fast shipping
-Who said the product expired quickly?
-People talking about taste
-Reviews about packaging quality
-Mentions of great price
-Customer service complaints
+no tea flavor
+fast shipping
+expired quickly
+terrible packaging
+love this product
+great price
+poor customer service
 ```
 
 ## What to Expect
 
-- **Query extraction**: 1-2 seconds
+- **Query embedding**: <1 second
 - **Semantic search**: <1 second
-- **BGE Reranking**: 5-10 seconds (much faster than LLM!)
-- **Results**: Chart + expandable review sections
+- **BGE Reranking**: 5-10 seconds on CPU
+- **Results**: Interactive charts + expandable review sections
 
 ## Troubleshooting
 
 ### "Embeddings not found"
 - Run `python generate_embeddings.py` first
-
-### "OpenRouter API error"
-- Check your API key is correct
-- Make sure you have free credits (new accounts get free tier)
+- Make sure both `review_embeddings.npz` and `summary_embeddings.npz` exist in the dataset folder
 
 ### "No results found"
-- Try a different query
-- Make the question more specific
+- Try lowering the score threshold
+- Try a different search phrase
 - Check if the topic exists in Amazon food reviews
+- Switch between searching in "Review Text" vs "Summary"
 
 ### Slow reranking
 - BGE reranker runs on CPU by default (~5-10 seconds for 500 candidates)
