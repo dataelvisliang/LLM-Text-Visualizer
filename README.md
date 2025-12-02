@@ -1,14 +1,23 @@
-# LLM Text Visualizer
+# Text Visualizer (Powered by Embedding Model)
 
-A Streamlit app for semantic search and trend analysis of Amazon product reviews using LLMs and sentence transformers.
+A Streamlit app for semantic search and trend analysis of Amazon product reviews using sentence transformers and BGE reranker.
+
+## Demo
+
+### Main Interface
+![Main Interface](assets/Main%20Interface.png)
+
+### Search Result Example
+![Search Result Example](assets/Search%20Result%20Example.png)
 
 ## Features
 
-- 🔍 **Natural Language Questions** - Ask questions like "How many people complain about no tea flavor?"
-- 🤖 **LLM-Powered Search** - Uses OpenRouter to extract search phrases from natural language
+- 🔍 **Direct Search** - Enter keywords or phrases to search reviews instantly
 - 📊 **Semantic Search** - Fast local embeddings with sentence-transformers (141K+ reviews)
-- 🎯 **Smart Reranking** - BGE Reranker cross-encoder for accurate relevance scoring (only keeps scores > 0.60)
-- 📈 **Trend Visualization** - See mentions over time (day/month/year granularity)
+- 🎯 **Smart Reranking** - BGE Reranker cross-encoder for accurate relevance scoring with adjustable score threshold (0.60-1.00)
+- 🎚️ **Flexible Controls** - Dual top-k sliders for retrieval and reranking, customizable score filtering
+- 📅 **Date Range Filter** - Focus on specific time periods with start and end date selectors
+- 📈 **Trend Visualization** - See mentions over time (month/year granularity)
 - 🥧 **Score Distribution** - Pie chart showing relevance score ranges
 - 📝 **Detailed Results** - Collapsible sections with top 10 reviews per period
 
@@ -39,14 +48,7 @@ git lfs install
 git lfs pull
 ```
 
-### 3. Get OpenRouter API Key
-
-1. Go to https://openrouter.ai/
-2. Sign up for a free account
-3. Generate an API key
-4. Copy the key (starts with `sk-or-v1-...`)
-
-### 4. Run the App
+### 3. Run the App
 
 ```bash
 streamlit run app.py
@@ -56,35 +58,36 @@ The app will open in your browser at `http://localhost:8501`
 
 ## Usage
 
-1. **Enter API Key** - Paste your OpenRouter API key in the sidebar
-2. **Ask a Question** - Type a natural language question about the reviews
-3. **Select Granularity** - Choose day/month/year for time aggregation
-4. **Choose Chart Type** - Toggle between trend chart and score distribution
-5. **Search** - Click the search button to run semantic search
-6. **Explore Results** - Expand periods to see top-scored reviews
+1. **Enter Search Phrase** - Type keywords or phrases to search for (e.g., "no tea flavor", "fast shipping")
+2. **Adjust Parameters** - Set top-k values for retrieval and reranking
+3. **Set Date Range** - Filter reviews by date range
+4. **Set Score Threshold** - Adjust minimum relevance score (0.60-1.00)
+5. **Select Visualization** - Choose time granularity (month/year) and chart type
+6. **Search** - Click the search button to run semantic search
+7. **Explore Results** - View trends and expand periods to see top-scored reviews
 
-## Example Questions
+## Example Searches
 
-- "How many people complain about no tea flavor?"
-- "Find reviews mentioning fast shipping"
-- "Who said the product expired quickly?"
-- "People complaining about taste"
-- "Reviews about packaging quality"
+- "no tea flavor"
+- "fast shipping"
+- "expired quickly"
+- "terrible packaging"
+- "love this product"
 
 ## Architecture
 
 ### Pipeline Flow
 
 ```
-User Question
-    ↓
-LLM Extract Search Phrase (OpenRouter)
+User Search Phrase
     ↓
 Generate Query Embedding (local sentence-transformers)
     ↓
-Cosine Similarity Search → Top 500 candidates
+Cosine Similarity Search → Top K candidates (user-configurable)
     ↓
-LLM Reranking (OpenRouter) → Keep scores > 0.60
+BGE Cross-Encoder Reranking → Keep scores > threshold (user-configurable)
+    ↓
+Filter by Date Range
     ↓
 Aggregate by Time Period
     ↓
@@ -93,11 +96,10 @@ Visualize + Show Results
 
 ### Models Used
 
-- **Query Extraction**: `nvidia/nemotron-nano-9b-v2:free` (OpenRouter - free)
 - **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2` (local)
 - **Reranking**: `BAAI/bge-reranker-base` (local cross-encoder)
 
-The OpenRouter model is completely free, and the local models run on your machine!
+All models run locally on your machine - no API keys required!
 
 ### Why Two-Stage Search?
 
@@ -160,7 +162,7 @@ LLMTextVisualizer/
 - [ ] Support multi-lingual reviews
 - [ ] Implement query result caching
 
-## Project Idea: Data Product Manager Perspective
+## Project Idea:
 
 ### Product Vision
 This project demonstrates a **semantic search analytics platform** that transforms unstructured customer feedback into actionable insights. From a data product perspective, this tool addresses several key business use cases:

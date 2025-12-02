@@ -1,13 +1,11 @@
 """
-LLM Text Visualizer - Amazon Reviews Semantic Search & Trend Analysis
+Text Visualizer (Powered by Embedding Model) - Amazon Reviews Semantic Search & Trend Analysis
 """
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import requests
-import json
 from pathlib import Path
 from datetime import datetime
 from sentence_transformers import SentenceTransformer, CrossEncoder
@@ -17,7 +15,7 @@ import plotly.graph_objects as go
 
 # Page config
 st.set_page_config(
-    page_title="LLM Text Visualizer",
+    page_title="Text Visualizer (Powered by Embedding Model)",
     page_icon="📊",
     layout="wide"
 )
@@ -65,71 +63,6 @@ def load_embeddings_and_metadata():
         metadata = pickle.load(f)
 
     return embeddings, metadata
-
-
-def extract_search_phrase(question: str, api_key: str) -> str:
-    """
-    Use OpenRouter LLM to extract the exact literal search phrase from user's question
-    """
-    url = "https://openrouter.ai/api/v1/chat/completions"
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost",
-        "X-Title": "LLM Text Visualizer"
-    }
-
-    messages = [
-        {
-            "role": "system",
-            "content": """You are a search query extractor. Given a natural language question about product reviews,
-extract the EXACT literal phrase that should be searched for in the reviews, capturing the sentiment and nuance.
-Return ONLY the search phrase, nothing else. No explanations, no quotes.
-
-IMPORTANT: Preserve sentiment, negations, and descriptive modifiers from the question.
-
-Examples:
-Question: "How many people complain about no tea flavor?"
-Output: no tea flavor
-
-Question: "How many people doesn't like the tea flavor?"
-Output: doesn't like the tea flavor
-
-Question: "Find reviews mentioning fast shipping"
-Output: fast shipping
-
-Question: "Who said the product tastes great?"
-Output: tastes great
-
-Question: "Reviews complaining about terrible packaging"
-Output: terrible packaging
-
-Question: "People who love this product"
-Output: love this product"""
-        },
-        {
-            "role": "user",
-            "content": question
-        }
-    ]
-
-    payload = {
-        "model": "nvidia/nemotron-nano-9b-v2:free",  # Free model
-        "messages": messages,
-        "temperature": 0.0,
-        "max_tokens": 50
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
-        search_phrase = result['choices'][0]['message']['content'].strip()
-        return search_phrase
-    except Exception as e:
-        st.error(f"Error extracting search phrase: {str(e)}")
-        return None
 
 
 def rerank_with_bge(query: str, texts: list, reranker: CrossEncoder) -> list:
@@ -285,25 +218,14 @@ def create_score_distribution_chart(scores):
 
 
 # Main App
-st.title("📊 LLM Text Visualizer")
+st.title("📊 Text Visualizer (Powered by Embedding Model)")
 st.markdown("Semantic search and trend analysis for Amazon reviews")
 
 # Sidebar
 with st.sidebar:
-    st.header("Configuration")
-
-    api_key = st.text_input(
-        "OpenRouter API Key",
-        type="password",
-        placeholder="sk-or-v1-...",
-        help="Get your free API key at https://openrouter.ai/"
-    )
-
-    st.markdown("---")
-    st.markdown("### About")
+    st.header("About")
     st.markdown("""
     This app uses:
-    - **OpenRouter** for LLM query extraction
     - **BGE Reranker** for accurate relevance scoring
     - **Sentence Transformers** for local embeddings
     - **Semantic search** to find relevant reviews
@@ -312,7 +234,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Models Used")
     st.markdown("""
-    - nvidia/nemotron-nano-9b-v2:free (OpenRouter)
     - BAAI/bge-reranker-base (local)
     - sentence-transformers/all-MiniLM-L6-v2 (local)
     """)
@@ -379,12 +300,12 @@ if st.session_state.metadata is not None:
 st.markdown("---")
 
 # Main search interface
-st.header("🔍 Ask a Question")
+st.header("🔍 Search Reviews")
 
-question = st.text_input(
-    "Natural language question about reviews",
-    placeholder="How many people complain about no tea flavor?",
-    help="Ask any question about the reviews, and the app will find relevant mentions"
+search_query = st.text_input(
+    "Search phrase",
+    placeholder="no tea flavor",
+    help="Enter keywords or phrases to search for in reviews"
 )
 
 st.markdown("##### Search Parameters")
@@ -451,25 +372,25 @@ if st.session_state.metadata is not None:
         st.warning("⚠️ Start date must be before end date. Adjusting...")
         start_date = end_date
 
-if st.button("🔎 Search", type="primary", disabled=not api_key or not question):
-    if not api_key:
-        st.warning("Please enter your OpenRouter API key in the sidebar")
-    elif not question:
-        st.warning("Please enter a question")
+    # Score threshold filter
+    st.markdown("##### Score Filter")
+    score_threshold = st.slider(
+        "Minimum Relevance Score",
+        min_value=0.60,
+        max_value=1.00,
+        value=0.60,
+        step=0.05,
+        help="Only show reviews with relevance score greater than this threshold"
+    )
+
+if st.button("🔎 Search", type="primary", disabled=not search_query):
+    if not search_query:
+        st.warning("Please enter a search phrase")
     else:
-        # Step 1: Extract search phrase
-        with st.spinner("Extracting search phrase with LLM..."):
-            search_phrase = extract_search_phrase(question, api_key)
-
-            if not search_phrase:
-                st.stop()
-
-            st.info(f"🎯 **Extracted search phrase:** \"{search_phrase}\"")
-
-        # Step 2: Generate query embedding
+        # Step 1: Generate query embedding
         with st.spinner("Generating query embedding..."):
             query_embedding = st.session_state.model.encode(
-                [search_phrase],
+                [search_query],
                 normalize_embeddings=True
             )[0]
 
@@ -497,7 +418,7 @@ if st.button("🔎 Search", type="primary", disabled=not api_key or not question
             ]
 
             rerank_scores = rerank_with_bge(
-                search_phrase,
+                search_query,
                 candidate_texts,
                 st.session_state.reranker
             )
@@ -505,17 +426,16 @@ if st.button("🔎 Search", type="primary", disabled=not api_key or not question
             rerank_scores = np.array(rerank_scores)
 
         # Step 6: Filter by threshold
-        threshold = 0.60
-        mask = rerank_scores >= threshold
+        mask = rerank_scores >= score_threshold
 
         filtered_indices = rerank_indices[mask]
         filtered_scores = rerank_scores[mask]
 
         if len(filtered_indices) == 0:
-            st.warning("No reviews found with relevance score > 0.60. Try a different query.")
+            st.warning(f"No reviews found with relevance score > {score_threshold:.2f}. Try lowering the score threshold or a different query.")
             st.stop()
 
-        st.success(f"✅ Found {len(filtered_indices)} highly relevant reviews (score > {threshold})")
+        st.success(f"✅ Found {len(filtered_indices)} highly relevant reviews (score > {score_threshold:.2f})")
 
         # Step 7: Prepare results dataframe
         results_df = pd.DataFrame({
