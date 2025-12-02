@@ -7,8 +7,11 @@ A Streamlit app for semantic search and trend analysis of Amazon product reviews
 ### Main Interface
 ![Main Interface](assets/Main%20Interface.png)
 
-### Search Result Example
-![Search Result Example](assets/Search%20Result%20Example.png)
+### Search Process
+![Search Process](assets/Search%20Process.png)
+
+### Result Preview
+![Result Preview](assets/Result%20Preview.png)
 
 ## Features
 
@@ -164,7 +167,8 @@ LLMTextVisualizer/
 ├── .gitignore                      # Git ignore patterns
 ├── assets/                         # Demo screenshots
 │   ├── Main Interface.png
-│   └── Search Result Example.png
+│   ├── Search Process.png
+│   └── Result Preview.png
 └── dataset/
     ├── amazon_review_part1.csv     # First half of dataset (not tracked in git)
     ├── amazon_review_part2.csv     # Second half of dataset (not tracked in git)
