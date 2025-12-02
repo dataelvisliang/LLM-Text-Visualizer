@@ -177,33 +177,6 @@ LLMTextVisualizer/
     └── metadata.pkl                # Review metadata (Git LFS, 110 MB)
 ```
 
-## Performance
-
-- **Initial load**: ~2-3 seconds (loading both embedding sets: 380 MB total)
-- **Model loading**: ~5-10 seconds (first time only - models are cached)
-- **Embedding search**: <1 second (cosine similarity on 141K reviews)
-- **BGE Reranking**: ~2-15 seconds depending on candidate count (CPU)
-  - 500 candidates: ~2-3 seconds
-  - 1,000 candidates: ~5-6 seconds
-  - 5,000 candidates: ~12-15 seconds
-- **Total query time**: ~3-16 seconds (no external API calls)
-
-## Limitations
-
-- Embedding files are large (~400 MB total for both review and summary embeddings) - requires Git LFS for version control
-- BGE reranking runs on CPU by default (GPU would be faster)
-- Initial embedding generation takes 20-30 minutes for 141K reviews
-
-## Future Improvements
-
-- [ ] Add caching for repeated queries
-- [ ] Support user-uploaded CSV files
-- [ ] Add export functionality for results
-- [ ] Add GPU support for faster reranking
-- [ ] Add sentiment analysis visualization
-- [ ] Support multi-lingual reviews
-- [ ] Implement query result caching
-
 ## Project Idea
 
 ### Product Vision
