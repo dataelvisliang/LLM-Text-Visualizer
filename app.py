@@ -334,7 +334,7 @@ search_query = st.text_input(
 # Search target selector
 search_target = st.radio(
     "Search in:",
-    options=["Review Text", "Summary"],
+    options=["Summary", "Review Text"],
     horizontal=True,
     help="Choose whether to search in full review text or just summaries"
 )
@@ -345,7 +345,7 @@ with col1:
     top_k_retrieval = st.slider(
         "🔍 Top-K for Cosine Similarity",
         min_value=100,
-        max_value=5000,
+        max_value=20000,
         value=1000,
         step=100,
         help="Number of candidates to retrieve using cosine similarity. Higher = more comprehensive but slower."
@@ -354,7 +354,7 @@ with col2:
     top_k_rerank = st.slider(
         "🎯 Top-K for Reranking",
         min_value=50,
-        max_value=1000,
+        max_value=5000,
         value=500,
         step=50,
         help="Number of top candidates to rerank with BGE. Must be ≤ cosine similarity top-k. Higher = better quality but slower."
@@ -534,6 +534,6 @@ if st.button("🔎 Search", type="primary", disabled=not search_query):
                     """)
 
 st.markdown("---")
-st.markdown("Made with Streamlit • Powered by OpenRouter & Sentence Transformers")
+st.markdown("Made with Streamlit • Powered by Sentence Transformers")
 
 # python -m streamlit run app.py
