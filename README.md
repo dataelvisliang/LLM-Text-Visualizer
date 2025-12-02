@@ -12,43 +12,72 @@ A Streamlit app for semantic search and trend analysis of Amazon product reviews
 
 ## Features
 
-- 🔍 **Direct Search** - Enter keywords or phrases to search reviews instantly
+- 🔍 **Dual Search Modes** - Search in either review summaries or full review text (selectable)
 - 📊 **Semantic Search** - Fast local embeddings with sentence-transformers (141K+ reviews)
-- 🎯 **Smart Reranking** - BGE Reranker cross-encoder for accurate relevance scoring with adjustable score threshold (0.60-1.00)
-- 🎚️ **Flexible Controls** - Dual top-k sliders for retrieval and reranking, customizable score filtering
+- 🎯 **Smart Reranking** - BGE Reranker cross-encoder for accurate relevance scoring with adjustable score threshold (0.20-1.00)
+- 🎚️ **Flexible Controls** - Dual top-k sliders for retrieval (up to 20K) and reranking (up to 5K), customizable score filtering
 - 📅 **Date Range Filter** - Focus on specific time periods with start and end date selectors
+- 📋 **Customizable Preview** - Select and reorder columns in the results table
 - 📈 **Trend Visualization** - See mentions over time (month/year granularity)
 - 🥧 **Score Distribution** - Pie chart showing relevance score ranges
 - 📝 **Detailed Results** - Collapsible sections with top 10 reviews per period
 
-## Setup
+## Deployment
 
-### 1. Install Dependencies
+### Streamlit Community Cloud (Recommended)
+
+This app is designed for easy deployment on Streamlit Community Cloud:
+
+1. **Fork/Clone this repository** to your GitHub account
+2. **Deploy to Streamlit Cloud**:
+   - Go to [share.streamlit.io](https://share.streamlit.io)
+   - Connect your GitHub account
+   - Select this repository
+   - Deploy!
+
+**Note**: All embedding files are included via Git LFS, so the app will work out-of-the-box on Streamlit Cloud without any additional setup.
+
+### Local Setup
+
+#### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Generate Embeddings
+#### 2. Clone with Git LFS
 
-**Important:** You must generate embeddings before running the app. This is a one-time process that takes 10-15 minutes.
+**Important:** The embedding files are tracked with Git LFS. Make sure you have Git LFS installed:
 
 ```bash
-python generate_embeddings.py
+git lfs install
+git clone <repository-url>
+cd LLMTextVisualizer
+git lfs pull
 ```
 
-This will create:
-- `dataset/embeddings.npz` (~80-100 MB compressed)
-- `dataset/metadata.pkl` (~50-70 MB)
-
-**Note:** These files are tracked with Git LFS. If you're cloning this repo, make sure you have Git LFS installed:
-
+If you've already cloned the repo without Git LFS, run:
 ```bash
 git lfs install
 git lfs pull
 ```
 
-### 3. Run the App
+#### 3. (Optional) Generate Embeddings from Scratch
+
+If you want to regenerate embeddings or use your own dataset:
+
+```bash
+python generate_embeddings.py
+```
+
+This creates:
+- `dataset/review_embeddings.npz` (~191 MB)
+- `dataset/summary_embeddings.npz` (~189 MB)
+- `dataset/metadata.pkl` (~110 MB)
+
+**Note:** This is a one-time process that takes 20-30 minutes for 141K reviews.
+
+#### 4. Run the App Locally
 
 ```bash
 streamlit run app.py
@@ -59,12 +88,14 @@ The app will open in your browser at `http://localhost:8501`
 ## Usage
 
 1. **Enter Search Phrase** - Type keywords or phrases to search for (e.g., "no tea flavor", "fast shipping")
-2. **Adjust Parameters** - Set top-k values for retrieval and reranking
-3. **Set Date Range** - Filter reviews by date range
-4. **Set Score Threshold** - Adjust minimum relevance score (0.60-1.00)
-5. **Select Visualization** - Choose time granularity (month/year) and chart type
-6. **Search** - Click the search button to run semantic search
-7. **Explore Results** - View trends and expand periods to see top-scored reviews
+2. **Select Search Target** - Choose to search in "Summary" or "Review Text"
+3. **Adjust Parameters** - Set top-k values for retrieval (100-20,000) and reranking (50-5,000)
+4. **Set Date Range** - Filter reviews by date range
+5. **Set Score Threshold** - Adjust minimum relevance score (0.20-1.00)
+6. **Customize Columns** - Select which columns to display in the preview table
+7. **Select Visualization** - Choose time granularity (month/year) and chart type
+8. **Search** - Click the search button to run semantic search
+9. **Explore Results** - View trends and expand periods to see top-scored reviews
 
 ## Example Searches
 
@@ -125,26 +156,33 @@ The app analyzes **141,210 Amazon product reviews** from the Fine Foods category
 ```
 LLMTextVisualizer/
 ├── app.py                          # Main Streamlit app
-├── generate_embeddings.py          # One-time embedding generation
+├── generate_embeddings.py          # One-time embedding generation script
 ├── requirements.txt                # Python dependencies
 ├── README.md                       # This file
-├── .gitattributes                  # Git LFS configuration
+├── QUICKSTART.md                   # Quick start guide
+├── .gitattributes                  # Git LFS configuration for large files
 ├── .gitignore                      # Git ignore patterns
+├── assets/                         # Demo screenshots
+│   ├── Main Interface.png
+│   └── Search Result Example.png
 └── dataset/
-    ├── amazon_review_part1.csv     # First half of dataset
-    ├── amazon_review_part2.csv     # Second half of dataset
-    ├── embeddings.npz              # Pre-computed embeddings (Git LFS)
-    └── metadata.pkl                # Review metadata (Git LFS)
+    ├── amazon_review_part1.csv     # First half of dataset (not tracked in git)
+    ├── amazon_review_part2.csv     # Second half of dataset (not tracked in git)
+    ├── review_embeddings.npz       # Review text embeddings (Git LFS, 191 MB)
+    ├── summary_embeddings.npz      # Summary embeddings (Git LFS, 189 MB)
+    └── metadata.pkl                # Review metadata (Git LFS, 110 MB)
 ```
 
 ## Performance
 
-- **Initial load**: ~2-3 seconds (loading embeddings)
+- **Initial load**: ~2-3 seconds (loading both embedding sets: 380 MB total)
 - **Model loading**: ~5-10 seconds (first time only - models are cached)
-- **Search extraction**: ~1-2 seconds (LLM call)
-- **Embedding search**: <1 second (local computation)
-- **BGE Reranking**: ~5-10 seconds (500 candidates on CPU)
-- **Total query time**: ~7-14 seconds
+- **Embedding search**: <1 second (cosine similarity on 141K reviews)
+- **BGE Reranking**: ~2-15 seconds depending on candidate count (CPU)
+  - 500 candidates: ~2-3 seconds
+  - 1,000 candidates: ~5-6 seconds
+  - 5,000 candidates: ~12-15 seconds
+- **Total query time**: ~3-16 seconds (no external API calls)
 
 ## Limitations
 
@@ -162,37 +200,65 @@ LLMTextVisualizer/
 - [ ] Support multi-lingual reviews
 - [ ] Implement query result caching
 
-## Project Idea:
+## Project Idea
 
 ### Product Vision
-This project demonstrates a **semantic search analytics platform** that transforms unstructured customer feedback into actionable insights. From a data product perspective, this tool addresses several key business use cases:
+This project demonstrates a **semantic search analytics platform** that transforms unstructured customer feedback into actionable insights. From a data product perspective, this tool addresses several key business use cases.
+
+### Why Semantic Search Is Superior to Keyword Search
+
+Traditional keyword search has fundamental limitations that semantic search overcomes:
+
+**The Long Tail Problem**
+- Customers express the same concept in countless ways: "no tea flavor", "doesn't taste like tea", "lacking tea taste", "missing the tea notes", "can't taste any tea", etc.
+- Keyword search requires you to think of every possible variation - an impossible task
+- Semantic search understands that all these phrases mean the same thing and retrieves them all with a single query
+
+**Synonym and Paraphrase Coverage**
+- Keyword search misses reviews using synonyms: searching "fast shipping" won't find "quick delivery" or "arrived promptly"
+- Semantic search understands semantic meaning, automatically finding all conceptually similar reviews regardless of exact wording
+- This completeness is critical for trend analysis - you can't spot emerging issues if you're missing 60% of relevant mentions
+
+**Context Understanding**
+- "Great product" vs "Great product, but broke after a week" - keyword search can't distinguish positive from negative
+- Semantic search combined with reranking understands context and nuance, surfacing truly relevant results
+- Better precision means less time wading through false positives
+
+**Concept-Based Discovery**
+- You can search for concepts you don't know the exact terms for: "problems with packaging" finds "damaged box", "poor wrapping", "crushed container", etc.
+- Enables exploratory analysis without knowing specific keywords in advance
+- Particularly powerful for understanding customer pain points expressed in unexpected language
+
+**Multilingual and Spelling Robustness**
+- Handles typos and spelling variations naturally: "recieved" vs "received", "delicious" vs "delicous"
+- Can understand related concepts across word forms: "ship", "shipping", "shipped", "shipment"
 
 ### Business Value Propositions
 
 **1. Customer Voice Analytics**
 - **Problem**: Product teams receive thousands of reviews but lack tools to quickly identify specific themes or emerging issues
-- **Solution**: Natural language search allows PMs to ask questions like "How many customers complain about shipping delays in Q4 2023?" and get instant visual trends
-- **Impact**: Reduce time-to-insight from days (manual review reading) to seconds (semantic search)
+- **Solution**: Semantic search allows PMs to find all mentions of a concept (e.g., "shipping delays") regardless of exact wording, with instant visual trends
+- **Impact**: Reduce time-to-insight from days (manual review reading) to seconds, with complete coverage instead of sampling
 
 **2. Issue Trend Detection**
-- **Problem**: Quality issues may go unnoticed until they become widespread
-- **Solution**: Time-based trend visualization shows when specific complaints (e.g., "product arrived damaged") started increasing
+- **Problem**: Quality issues may go unnoticed until they become widespread, especially when customers describe them differently
+- **Solution**: Time-based trend visualization shows when specific complaints started increasing, capturing all semantic variations
 - **Impact**: Early detection enables faster response to product quality issues, reducing customer churn
 
 **3. Feature Prioritization**
-- **Problem**: Deciding which features customers care about most requires analyzing scattered feedback
-- **Solution**: Search for feature mentions ("wish it had X") and quantify demand through review counts and sentiment scores
-- **Impact**: Data-driven roadmap decisions based on actual customer voice rather than assumptions
+- **Problem**: Deciding which features customers care about most requires analyzing scattered feedback expressed in diverse language
+- **Solution**: Search for feature concepts and quantify demand through comprehensive review counts and sentiment scores
+- **Impact**: Data-driven roadmap decisions based on complete customer voice coverage rather than keyword sampling
 
 **4. Competitive Intelligence**
 - **Problem**: Understanding why customers choose or reject products compared to competitors
-- **Solution**: Search patterns like "better than [competitor]" or "switched from [competitor]" to identify competitive advantages
+- **Solution**: Search semantic patterns to identify competitive advantages across all linguistic variations
 - **Impact**: Inform positioning and marketing strategies with customer-validated differentiators
 
 **5. Customer Success & Support**
-- **Problem**: Support teams need to understand common pain points to create better documentation
-- **Solution**: Identify recurring issues (e.g., "confusing setup instructions") with relevance scoring to prioritize documentation improvements
-- **Impact**: Reduce support ticket volume through proactive self-service content
+- **Problem**: Support teams need to understand common pain points to create better documentation, but customers describe issues differently
+- **Solution**: Identify all recurring issues with semantic search and relevance scoring to prioritize documentation improvements
+- **Impact**: Reduce support ticket volume through proactive self-service content that addresses real customer language
 
 ### Technical Architecture Benefits
 
@@ -211,40 +277,6 @@ This project demonstrates a **semantic search analytics platform** that transfor
 - All processing runs 100% locally on your machine
 - No data sent to external services
 - Perfect for sensitive data and on-premise deployments
-
-### Potential Product Roadmap
-
-**Phase 1: Current State** ✅
-- Natural language search over reviews
-- Temporal trend analysis
-- Relevance scoring and filtering
-
-**Phase 2: Enhanced Analytics** (3-6 months)
-- Automated insight generation (e.g., "Top 3 emerging complaints this month")
-- Sentiment analysis integration (positive/negative trend lines)
-- Export to CSV/PDF for executive reporting
-
-**Phase 3: Proactive Monitoring** (6-12 months)
-- Automated alerts when negative trends spike
-- Comparative analysis across product lines
-- Integration with ticketing systems (Jira, Zendesk)
-
-**Phase 4: Enterprise Features** (12+ months)
-- Multi-dataset support (combine reviews, support tickets, social media)
-- Team collaboration (shared saved searches, annotations)
-- API access for integration with BI tools (Tableau, PowerBI)
-
-### Success Metrics
-
-**User Adoption**
-- Time saved per insight query (target: 95% reduction vs manual review)
-- Weekly active users among product/support teams
-- Number of searches per user (engagement proxy)
-
-**Business Impact**
-- Reduction in time-to-resolution for customer complaints
-- Increase in feature adoption driven by customer-validated priorities
-- Decrease in negative review trends after issue identification
 
 ### Target Users
 
